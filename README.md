@@ -48,10 +48,14 @@
 │     ├─ main.css         # 主要样式
 │     └─ index.less
 ├─ functions/
-│  ├─ _middleware.js
-│  └─ api/
-│     ├─ create.js
+│  ├─ api/
+│  │  ├─ create.js
+│  │  └─ [id].js
+│  └─ s/
 │     └─ [id].js
+├─ lib/short-links.mjs    # 短链校验、存储、限流与跳转
+├─ migrations/           # D1 表结构迁移
+├─ tests/                # API 与前端链接状态回归测试
 ├─ webpack.config.js
 ├─ wrangler.toml
 └─ package.json
@@ -64,13 +68,13 @@
 - Babel
 - Tailwind CSS
 - jQuery
-- Cloudflare Pages Functions（仓库内有原型代码，但不是主流程依赖）
+- Cloudflare Pages Functions + D1（可选订阅短链服务）
 
 ## 快速开始
 
 ### 环境要求
 
-- Node.js 18 或更高版本
+- Node.js 24（推荐，回归测试使用内置 SQLite）
 - npm 9 或更高版本
 
 ### 安装依赖
@@ -155,7 +159,7 @@ Cloudflare Pages 是这个仓库最自然的部署目标，因为仓库里已经
    - Build output directory: `dist`
    - Root directory: 留空，使用仓库根目录
 6. 建议在环境变量中补充：
-   - `NODE_VERSION=18`
+   - `NODE_VERSION=24`
 7. 点击 `Save and Deploy`。
 
 这个方案的优点：
@@ -189,70 +193,54 @@ npx wrangler pages deploy dist
 
 如果是 apex 根域，通常需要把域名托管到 Cloudflare；如果是子域名，则按提示添加 CNAME 即可。
 
-### 可选：启用 Pages Functions / 短链接原型
+### 启用订阅短链
 
-仓库中包含 [`functions/api/create.js`](./functions/api/create.js) 和 `functions/api/[id].js`，它们依赖 `env.DB`，也就是 Cloudflare D1 绑定。
+生成完整转换链接后，点击结果区的“生成短链”。创建成功后，复制、普通二维码、Clash 导入和 Clash 二维码会一起使用短链。取消“使用短链”即可切回完整链接；修改订阅参数会清除上一次结果。
 
-但基于当前代码结构，我的判断是：
+短链服务由 Pages Functions 和 D1 提供：
+- `POST /api/create`：JSON 请求 `{ "url": "完整转换链接" }`，返回 `{ "slug": "...", "link": "https://本站/s/...", "expiresAt": null }`。
+- `GET /s/:id`、`HEAD /s/:id`：返回 302 跳转。原型的 `/api/:id` 路由继续兼容。
+- 链接默认长期有效；API 可选传入整数 `expiresInDays`（1–365）。不存在返回 404，过期或停用返回 410。
+- 创建接口每个来源 IP 每分钟最多 10 次、每小时最多 100 次；限流不影响订阅读取。
+- 默认仅允许 `https://conv.620895.xyz` 的转换链接。要启用其他可信后端，在 Wrangler 的 `[vars]` 和对应预览环境中设置 `SHORTLINK_ALLOWED_ORIGINS`，使用逗号分隔完整 origin。自定义后端仍可生成和使用普通长链接。
+- 短码使用 96 位密码学随机数，SQL 使用参数绑定。服务不保存原始 IP、UA 或逐次访问日志。
+- 短链会在数据库中保存完整订阅地址，302 跳转可还原该地址。持有短链即可读取订阅，请按订阅凭据保管。
 
-- 这部分更像“预留/原型功能”，不是当前页面主流程的必要依赖。
-- 前端主流程没有直接调用 `/api/create`。
-- 如果你准备正式启用这套短链接能力，建议先自行联调并确认路由、返回链接和数据库模型是否符合你的实际需求。
+#### 数据库和绑定
 
-如果你仍想启用这部分能力，至少需要补齐 D1 绑定和表结构。
-
-#### 1. 创建 D1 数据库
-
-```bash
-npx wrangler d1 create subweb
-```
-
-#### 2. 将数据库绑定为 `DB`
-
-你可以二选一：
-
-- 在 Cloudflare Dashboard 的 `Settings > Bindings` 中添加 D1 绑定，变量名填 `DB`
-- 或者在 `wrangler.toml` / `wrangler.json(c)` 中声明 D1 绑定
-
-如果使用 Wrangler 配置文件，最关键的是保证绑定名为 `DB`。
-
-#### 3. 初始化表结构
-
-示例 SQL：
-
-```sql
-CREATE TABLE IF NOT EXISTS links (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  url TEXT NOT NULL,
-  slug TEXT NOT NULL,
-  ip TEXT,
-  status INTEGER DEFAULT 1,
-  ua TEXT,
-  create_time TEXT
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_links_slug ON links(slug);
-CREATE INDEX IF NOT EXISTS idx_links_url ON links(url);
-
-CREATE TABLE IF NOT EXISTS logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  url TEXT NOT NULL,
-  slug TEXT NOT NULL,
-  ip TEXT,
-  referer TEXT,
-  ua TEXT,
-  create_time TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_logs_slug ON logs(slug);
-```
-
-#### 4. 本地调试 Functions
+本项目通过 `wrangler.toml` 管理生产和预览数据库绑定，名称均为 `DB`。部署到自己的 Cloudflare 账号时，请创建自己的数据库并替换配置中的数据库 ID；生产和预览使用不同数据库。
 
 ```bash
+npx wrangler d1 create subweb-shortlinks
+npx wrangler d1 create subweb-shortlinks-preview
+```
+
+首次部署前执行数据库迁移：
+
+```bash
+npx wrangler d1 migrations apply subweb-shortlinks --remote
+npx wrangler d1 migrations apply subweb-shortlinks-preview --env preview --remote
+```
+
+迁移兼容空数据库和原型的旧 `links` 表，保留已有链接和日志，并添加有效期字段及限流表。请通过迁移命令执行一次，不要重复手动执行 `ALTER TABLE`。停用某条链接时，将 `links.status` 改为 `0`。
+
+没有配置 D1 时，长链接功能正常，创建短链会提示服务未就绪。
+
+#### 本地验证和部署
+
+使用 Node.js 24（测试使用内置 SQLite）：
+
+```bash
+npm ci
+npm test
 npm run build
-npx wrangler pages dev dist --d1 DB=<YOUR_DATABASE_ID>
+npx wrangler d1 migrations apply subweb-shortlinks --local
+npx wrangler pages dev dist
 ```
+
+本地数据保存在 `.wrangler/`，不影响线上数据库。生产部署可推送到已连接的 Git 仓库，或运行 `npx wrangler pages deploy dist`。
+
+`public/_routes.json` 会复制到构建目录，仅让 `/api/*` 和 `/s/*` 调用 Functions。请不要给 `/s/*` 添加交互式验证码，否则订阅客户端无法自动更新。
 
 ## EdgeOne Pages 部署
 
@@ -333,7 +321,7 @@ edgeone pages deploy ./dist -n subweb
 
 - 本项目不是转换后端，后端不可用时页面无法替你完成转换。
 - 公共后端、公共规则文件随时可能失效、变慢或被限流。
-- 仓库内的 Pages Functions 更适合视为预留原型，而不是当前版本的核心卖点。
+- 短链功能需要 Pages Functions 和已迁移的 D1 数据库；其他静态托管平台需要另行接入兼容接口。
 - 远程规则链接如果发生变更，页面中的预设配置也需要同步更新。
 
 ## 常见问题
