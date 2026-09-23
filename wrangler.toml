@@ -1,15 +1,9 @@
 # Cloudflare Pages 配置文件
 # 用于配置构建和函数设置
 
-[build]
-  command = "npm run build"
-  publish = "dist"
-
-[build.environment]
-  NODE_VERSION = "18"
-
-[[functions]]
-  pattern = "/api/*"
+name = "subweb"
+compatibility_date = "2026-09-24"
+pages_build_output_dir = "./dist"
 
 [functions.env]
   # 在这里配置环境变量
