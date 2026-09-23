@@ -89,6 +89,8 @@ module.exports = {
         },
         minimize: true,
         minimizer: [new TerserPlugin({
+            // Keep the standalone QRCode global used by both QR actions.
+            exclude: /^qrcode\.min\.js$/,
             terserOptions: {
                 toplevel: true
                 
