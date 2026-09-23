@@ -2,6 +2,11 @@ import './assets/css/main.css';
 import { backendConfig, externalConfig, targetConfig } from './config.js';
 
 let subUrl = '';
+let longSubUrl = '';
+let shortSubUrl = '';
+let shortRequestId = 0;
+let shortLinkPending = false;
+let shortLinkController = null;
 
 // Theme management
 class ThemeManager {
@@ -155,6 +160,7 @@ function applyMobileAdvancedOptions() {
 }
 
 function handleMobileAdvancedToggle(optionName) {
+    invalidateGeneratedLink();
     console.log('Toggling option:', optionName, 'from', mobileAdvancedOptions[optionName], 'to', !mobileAdvancedOptions[optionName]);
     mobileAdvancedOptions[optionName] = !mobileAdvancedOptions[optionName];
     updateMobileAdvancedModal();
@@ -340,7 +346,7 @@ function copyText(copyStr) {
     });
 }
 
-function generateSubUrl(data) {
+function buildSubscriptionUrl(data) {
     const backend = data.backend;
     let originUrl = data.url;
     originUrl = encodeURIComponent(originUrl.replace(/(\n|\r|\n\r)/g, '|'));
@@ -364,26 +370,127 @@ function generateSubUrl(data) {
     }
 
     newSubUrl += `&emoji=${data.emoji || 'false'}&append_type=${data.append_type || 'false'}&append_info=${data.append_info || 'false'}&scv=${data.scv || 'false'}&udp=${data.udp || 'false'}&list=${data.list || 'false'}&sort=${data.sort || 'false'}&fdn=${data.fdn || 'false'}&insert=${data.insert || 'false'}`;
-    subUrl = newSubUrl;
-    $('#result').val(subUrl);
-    
-    // Show result section with animation
-    const resultSection = document.getElementById('resultSection');
-    if (resultSection) {
-        resultSection.style.display = 'block';
-        setTimeout(() => {
-            resultSection.classList.remove('opacity-0', 'translate-y-4');
-            resultSection.classList.add('opacity-100', 'translate-y-0');
-        }, 100);
+    return newSubUrl;
+}
+
+function resetShortLink() {
+    shortRequestId += 1;
+    shortLinkController?.abort();
+    shortLinkController = null;
+    shortLinkPending = false;
+    shortSubUrl = '';
+    const toggle = document.getElementById('useShortLink');
+    if (toggle) toggle.checked = false;
+    document.getElementById('shortLinkChoice')?.classList.add('hidden');
+    updateShortLinkButton();
+}
+
+function updateShortLinkButton() {
+    const button = document.getElementById('shortLinkBtn');
+    if (button) button.disabled = shortLinkPending;
+    const text = document.getElementById('shortLinkBtnText');
+    if (text) text.textContent = shortLinkPending ? '正在生成…' : shortSubUrl ? '复制短链' : '生成短链';
+}
+
+function updateSelectedLink() {
+    const useShort = document.getElementById('useShortLink')?.checked && shortSubUrl;
+    subUrl = useShort ? shortSubUrl : longSubUrl;
+    const result = document.getElementById('result');
+    if (result) result.value = subUrl;
+    const status = document.getElementById('linkStatus');
+    if (status) status.textContent = useShort
+        ? '当前使用短链，复制、二维码和 Clash 导入均使用此链接。'
+        : '当前使用完整链接，可生成短链方便导入和分享。';
+}
+
+function setGeneratedUrl(url) {
+    resetShortLink();
+    longSubUrl = url;
+    updateSelectedLink();
+    const section = document.getElementById('resultSection');
+    if (section) {
+        section.style.display = 'block';
+        section.classList.remove('opacity-0', 'translate-y-4');
+        section.classList.add('opacity-100', 'translate-y-0');
     }
-    
-    // Show copy button
     const copyBtn = document.getElementById('copyBtn');
-    if (copyBtn) {
-        copyBtn.style.display = 'inline-flex';
-    }
-    
+    if (copyBtn) copyBtn.style.display = 'inline-flex';
+}
+
+function invalidateGeneratedLink() {
+    if (!longSubUrl && !shortLinkPending) return;
+    resetShortLink();
+    longSubUrl = '';
+    subUrl = '';
+    const result = document.getElementById('result');
+    if (result) result.value = '';
+    const section = document.getElementById('resultSection');
+    if (section) section.style.display = 'none';
+}
+
+function generateSubUrl(data) {
+    setGeneratedUrl(buildSubscriptionUrl(data));
     copyText(subUrl);
+}
+
+async function handleShortLink() {
+    if (!longSubUrl || shortLinkPending) return;
+    const current = readSubscriptionForm(document.getElementById('optionsForm'));
+    if (!current) return;
+    const currentUrl = buildSubscriptionUrl(current);
+    if (currentUrl !== longSubUrl) setGeneratedUrl(currentUrl);
+    if (shortSubUrl) {
+        document.getElementById('useShortLink').checked = true;
+        updateSelectedLink();
+        copyText(subUrl);
+        return;
+    }
+    const requestId = ++shortRequestId;
+    const original = longSubUrl;
+    const controller = new AbortController();
+    shortLinkController = controller;
+    shortLinkPending = true;
+    updateShortLinkButton();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+        const response = await fetch('/api/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: original }),
+            signal: controller.signal
+        });
+        let payload;
+        try {
+            payload = await response.json();
+        } catch {
+            throw new Error('短链服务尚未就绪，请暂时使用完整链接。');
+        }
+        if (!response.ok) throw new Error(payload.message || '短链生成失败，请稍后重试。');
+        const link = new URL(payload.link);
+        if (link.origin !== window.location.origin || !/^\/s\/[A-Za-z0-9_-]{16}$/.test(link.pathname)) {
+            throw new Error('短链服务返回了无效链接，请使用完整链接。');
+        }
+        // A form edit or a new generation must not be overwritten by an old request.
+        if (requestId !== shortRequestId || original !== longSubUrl) return;
+        shortSubUrl = link.href;
+        document.getElementById('shortLinkChoice')?.classList.remove('hidden');
+        document.getElementById('useShortLink').checked = true;
+        updateSelectedLink();
+        copyText(subUrl);
+    } catch (error) {
+        if (requestId === shortRequestId) {
+            showToast(error.name === 'AbortError'
+                ? '短链生成超时，请重试或使用完整链接。'
+                : error.message, 'error');
+        }
+    } finally {
+        clearTimeout(timeout);
+        if (requestId === shortRequestId) {
+            shortLinkPending = false;
+            shortLinkController = null;
+            updateShortLinkButton();
+        }
+    }
 }
 
 // Initialize form elements with cached DOM access
@@ -471,11 +578,15 @@ function handleBackendChange() {
 }
 
 // Form submission handler
-function handleFormSubmit(event) {
-    event.preventDefault();
+function readSubscriptionForm(form) {
+    if (!form) return;
+    const formData = new FormData(form);
     
-    const formData = new FormData(event.target);
-    
+    if (!formData.get('url')?.trim() || !formData.get('target')) {
+        showToast('请填写订阅链接和选择客户端类型', 'error');
+        return;
+    }
+
     // Get backend from header selector instead of form
     const backendHeaderSelect = document.getElementById('backendHeader');
     let backend = backendHeaderSelect ? backendHeaderSelect.value : '';
@@ -521,7 +632,7 @@ function handleFormSubmit(event) {
         config = formData.get('config');
     }
     
-    const data = {
+    return {
         url: formData.get('url'),
         target: formData.get('target'),
         backend: backend,
@@ -540,7 +651,13 @@ function handleFormSubmit(event) {
         insert: formData.get('insert') === 'on' ? 'true' : 'false'
     };
     
-    generateSubUrl(data);
+
+}
+
+function handleFormSubmit(event) {
+    event.preventDefault();
+    const data = readSubscriptionForm(event.target);
+    if (data) generateSubUrl(data);
 }
 
 // Import to Clash handler
@@ -610,114 +727,11 @@ function handleQrCode() {
 
 // Clash QR Code button handler
 function handleClashQrCode() {
-    // Get form data first
-    const form = document.getElementById('optionsForm');
-    if (!form) {
-        showToast('表单未找到', 'error');
-        return;
-    }
-    
-    const formData = new FormData(form);
-    
-    // Get backend from header selector
-    const backendHeaderSelect = document.getElementById('backendHeader');
-    let backend = backendHeaderSelect ? backendHeaderSelect.value : '';
-    
-    // If custom backend is selected, use the custom input value
-    if (backend === 'custom') {
-        const customBackendHeader = document.getElementById('customBackendHeader');
-        backend = customBackendHeader ? customBackendHeader.value.trim() : '';
-        // Validate custom backend URL
-        if (!backend) {
-            showToast('请输入自定义后端地址', 'error');
-            return;
-        }
-        // Smart auto-completion for backend URL
-        backend = autoCompleteBackendUrl(backend);
-    }
-    
-    if (!backend) {
-        showToast('请选择后端服务', 'error');
-        return;
-    }
-    
-    const url = formData.get('url');
-    const target = formData.get('target');
-    
-    if (!url || !target) {
-        showToast('请填写订阅链接和选择客户端类型', 'error');
-        return;
-    }
-    
-    // Get config value - either from select or custom input
-    let config = '';
-    const customConfigToggle = document.getElementById('customConfigToggle');
-    if (customConfigToggle && customConfigToggle.checked) {
-        // Use custom config
-        const customConfigInput = document.getElementById('customConfig');
-        config = customConfigInput ? customConfigInput.value.trim() : '';
-        if (!config) {
-            showToast('请输入自定义配置链接', 'error');
-            return;
-        }
-        // Validate URL format
-        try {
-            new URL(config);
-        } catch (e) {
-            showToast('自定义配置链接格式不正确，请输入有效的URL', 'error');
-            return;
-        }
-    } else {
-        // Use regular config select
-        config = formData.get('config');
-    }
-    
-    const data = {
-        url: url,
-        target: target,
-        backend: backend,
-        config: config,
-        include: formData.get('include'),
-        exclude: formData.get('exclude'),
-        name: formData.get('name'),
-        emoji: formData.get('emoji') === 'on' ? 'true' : 'false',
-        append_type: formData.get('append_type') === 'on' ? 'true' : 'false',
-        append_info: formData.get('append_info') === 'on' ? 'true' : 'false',
-        scv: formData.get('scv') === 'on' ? 'true' : 'false',
-        udp: formData.get('udp') === 'on' ? 'true' : 'false',
-        list: formData.get('list') === 'on' ? 'true' : 'false',
-        sort: formData.get('sort') === 'on' ? 'true' : 'false',
-        fdn: formData.get('fdn') === 'on' ? 'true' : 'false',
-        insert: formData.get('insert') === 'on' ? 'true' : 'false'
-    };
-    
-    // Generate subscription URL
-    const backend_url = data.backend;
-    let originUrl = data.url;
-    originUrl = encodeURIComponent(originUrl.replace(/(\n|\r|\n\r)/g, '|'));
+    const data = readSubscriptionForm(document.getElementById('optionsForm'));
+    if (!data) return;
+    const currentUrl = buildSubscriptionUrl(data);
+    if (currentUrl !== longSubUrl) setGeneratedUrl(currentUrl);
 
-    let newSubUrl = `${backend_url}&url=${originUrl}&target=${data.target}`;
-
-    if (data.config) {
-        newSubUrl += `&config=${encodeURIComponent(data.config)}`;
-    }
-
-    if (data.include) {
-        newSubUrl += `&include=${encodeURIComponent(data.include)}`;
-    }
-
-    if (data.exclude) {
-        newSubUrl += `&exclude=${encodeURIComponent(data.exclude)}`;
-    }
-
-    if (data.name) {
-        newSubUrl += `&filename=${encodeURIComponent(data.name)}`;
-    }
-
-    newSubUrl += `&emoji=${data.emoji || 'false'}&append_type=${data.append_type || 'false'}&append_info=${data.append_info || 'false'}&scv=${data.scv || 'false'}&udp=${data.udp || 'false'}&list=${data.list || 'false'}&sort=${data.sort || 'false'}&fdn=${data.fdn || 'false'}&insert=${data.insert || 'false'}`;
-    
-    subUrl = newSubUrl;
-    
     const modal = document.getElementById('qrModal');
     const canvas = document.getElementById('qrCodeCanvas');
     
@@ -1091,7 +1105,7 @@ $(document).ready(() => {
     // Add change listener for header backend selector
     if (backendHeaderSelect) {
         backendHeaderSelect.addEventListener('change', () => {
-            syncBackendSelectors('backendHeader');
+            invalidateGeneratedLink();
             // Close dropdown after selection
             if (backendDropdown) {
                 backendDropdown.classList.add('hidden');
@@ -1103,8 +1117,14 @@ $(document).ready(() => {
     const form = document.getElementById('optionsForm');
     if (form) {
         form.addEventListener('submit', handleFormSubmit);
+        form.addEventListener('input', invalidateGeneratedLink);
+        form.addEventListener('change', invalidateGeneratedLink);
     }
     
+    document.getElementById('shortLinkBtn')?.addEventListener('click', handleShortLink);
+    document.getElementById('useShortLink')?.addEventListener('change', updateSelectedLink);
+    document.getElementById('customBackendHeader')?.addEventListener('input', invalidateGeneratedLink);
+
     // Import to Clash button
     const importBtn = document.getElementById('importToClash');
     if (importBtn) {

@@ -127,3 +127,5 @@ out
 .pnp.*
 
 dist/
+.wrangler/
+.dev.vars

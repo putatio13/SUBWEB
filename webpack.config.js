@@ -69,7 +69,8 @@ module.exports = {
         new CopyPlugin({
             patterns: [
                 { from: "public/favicon.ico", to: "favicon.ico" },
-                { from: "public/qrcode.min.js", to: "qrcode.min.js" }
+                { from: "public/qrcode.min.js", to: "qrcode.min.js" },
+                { from: "public/_routes.json", to: "_routes.json" }
             ],
         })
     ],
@@ -88,6 +89,8 @@ module.exports = {
         },
         minimize: true,
         minimizer: [new TerserPlugin({
+            // Keep the standalone QRCode global used by both QR actions.
+            exclude: /^qrcode\.min\.js$/,
             terserOptions: {
                 toplevel: true
                 
