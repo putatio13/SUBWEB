@@ -2,6 +2,6 @@
 # 用于配置构建和函数设置
 
 name = "subweb"
-compatibility_date = "2026-09-1"
+compatibility_date = "2026-09-01"
 pages_build_output_dir = "./dist"
 
