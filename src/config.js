@@ -1,15 +1,9 @@
 export const targetConfig = [{
     label: 'Clash',
-    value: 'clash'
-}, {
-    label: 'Clash新参数',
     value: 'clash&new_name=true'
 }, {
-    label: 'ClashR',
-    value: 'clashr'
-}, {
-    label: 'ClashR新参数',
-    value: 'clashr&new_name=true'
+    label: 'Stash',
+    value: 'stash'
 }, {
     label: '混合订阅（mixed）',
     value: 'mixed'
@@ -55,22 +49,25 @@ export const targetConfig = [{
 }];
 export const backendConfig = [
     {
-        label: 'CM提供-负载均衡后端',
-        value: 'https://subapi.cmliussss.net/sub?'
-    }, {
-        label: 'CM提供-应急备用后端',
-        value: 'https://subapi.fxxk.dedyn.io/sub?'
-    }, {
-        label: '肥羊提供-增强型后端',
-        value: 'https://url.v1.mk/sub?'
-    }, {
-        label: '肥羊提供-备用后端',
-        value: 'https://api.v1.mk/sub?'
+        label: '后端',
+        value: 'https://conv.620895.xyz/sub?'
     }, {
         label: '自建服务',
         value: 'http://localhost:25500/sub?'
     }];
 export const externalConfig = [{
+    label: '本地规则',
+    options: [{
+        label: '简单版',
+        value: 'profiles/lite.ini'
+    }, {
+        label: '精简版',
+        value: 'profiles/pc_slim.ini'
+    }, {
+        label: '全量版',
+        value: 'profiles/pc.ini'
+    }]
+}, {
     label: 'CM规则',
     options: [{
         label: '默认版-港美优化',
