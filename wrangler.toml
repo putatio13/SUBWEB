@@ -1,7 +1,16 @@
-# Cloudflare Pages 配置文件
-# 用于配置构建和函数设置
-
+# Cloudflare Pages configuration
 name = "subweb"
 compatibility_date = "2026-09-01"
 pages_build_output_dir = "./dist"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "subweb-shortlinks"
+database_id = "855b2ba6-7fe1-4bbb-a833-a81f0f4b9ada"
+migrations_dir = "migrations"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "subweb-shortlinks-preview"
+database_id = "e92e036a-9ad3-48fe-8bae-cab7ad9eaef9"
+migrations_dir = "migrations"
