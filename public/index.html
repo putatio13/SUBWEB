@@ -323,6 +323,11 @@
                             </div>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                            <button id="shortLinkBtn" type="button"
+                                class="btn-secondary text-sm sm:text-base px-4 py-2 disabled:opacity-50 disabled:cursor-wait">
+                                <i class="fas fa-link mr-2"></i>
+                                <span id="shortLinkBtnText">生成短链</span>
+                            </button>
                             <button id="qrBtn" type="button"
                                 class="btn-secondary text-sm sm:text-base px-4 py-2">
                                 <i class="fas fa-qrcode mr-2"></i>
@@ -334,6 +339,14 @@
                                 复制链接
                             </button>
                         </div>
+                    </div>
+                    <div class="mb-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                        <label id="shortLinkChoice" class="hidden items-center gap-2 cursor-pointer">
+                            <input id="useShortLink" type="checkbox" class="rounded text-blue-600">
+                            使用短链
+                        </label>
+                        <p id="linkStatus" aria-live="polite">当前使用完整链接，可生成短链方便导入和分享。</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">生成短链会保存完整订阅地址；持有短链即可读取订阅，请妥善保管。</p>
                     </div>
                     <div class="relative">
                         <textarea id="result" readonly
