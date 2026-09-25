@@ -71,6 +71,10 @@ test('publishes production links on aot.im while preview links remain isolated',
     const live = await (await create(db, { url: destination }, { env })).json();
     assert.equal(live.link, 'https://aot.im/s/' + live.slug);
     assert.equal((await resolve(db, live.slug)).headers.get('location'), destination);
+    for (const site of ['https://subconv.aot.im', 'https://subweb-3lq.pages.dev']) {
+        const alias = await (await create(db, { url: destination }, { env, origin: site })).json();
+        assert.equal(alias.link, 'https://aot.im/s/' + alias.slug);
+    }
     const previewOrigin = 'https://preview.subweb-3lq.pages.dev';
     const preview = await (await create(db, { url: destination }, { env, origin: previewOrigin })).json();
     assert.equal(preview.link, previewOrigin + '/s/' + preview.slug);

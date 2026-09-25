@@ -50,6 +50,16 @@ test('selected short URL is shared by copy, both QR codes and Clash import; orig
     assert.equal(app.opened.at(-1), 'clash://install-config?url=' + encodeURIComponent(original));
 });
 
+test('production aliases accept the aot.im link from the same service', async () => {
+    for (const site of ['https://subconv.aot.im', 'https://subweb-3lq.pages.dev']) {
+        const app = setup(async () => Response.json({ link: short }, { status: 201 }));
+        app.run(`window.location.origin = ${JSON.stringify(site)}`);
+        app.run('generateSubUrl(data)');
+        await app.run('handleShortLink()');
+        assert.equal(app.element('result').value, short);
+    }
+});
+
 test('an old response cannot overwrite a regenerated link', async () => {
     let finish;
     const app = setup(() => new Promise(resolve => { finish = resolve; }));
