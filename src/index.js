@@ -466,7 +466,7 @@ async function handleShortLink() {
             throw new Error('短链服务尚未就绪，请暂时使用完整链接。');
         }
         if (!response.ok) throw new Error(payload.message || '短链生成失败，请稍后重试。');
-        const link = new URL(payload.publicLink || payload.link);
+        const link = new URL(payload.link);
         const trustedShortDomain = [
             'https://subconv.620895.xyz',
             'https://subconv.aot.im',
