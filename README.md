@@ -198,7 +198,7 @@ npx wrangler pages deploy dist
 生成完整转换链接后，点击结果区的“生成短链”。正式站点 `subconv.620895.xyz`、`subconv.aot.im` 和 `subweb-3lq.pages.dev` 生成的短链使用 `https://aot.im/s/…`；预览部署继续使用各自的预览域名和数据库。创建成功后，复制、普通二维码、Clash 导入和 Clash 二维码会一起使用短链。取消“使用短链”即可切回完整链接；修改订阅参数会清除上一次结果。
 
 短链服务由 Pages Functions 和 D1 提供：
-- `POST /api/create`：JSON 请求 `{ "url": "完整转换链接" }`，返回 `slug`、`link`、`publicLink` 和 `expiresAt`。`link` 保持为当前站点域名，兼容缓存中的旧页面；新页面优先使用 `publicLink`，正式站点返回 `https://aot.im/s/…`。
+- `POST /api/create`：JSON 请求 `{ "url": "完整转换链接" }`，返回 `slug`、`link` 和 `expiresAt`。正式站点的 `link` 为 `https://aot.im/s/…`；预览站点的 `link` 保持预览域名。
 - `GET /s/:id`、`HEAD /s/:id`：返回 302 跳转。原型的 `/api/:id` 路由继续兼容。
 - 链接默认长期有效；API 可选传入整数 `expiresInDays`（1–365）。不存在返回 404，过期或停用返回 410。
 - 创建接口每个来源 IP 每分钟最多 10 次、每小时最多 100 次；限流不影响订阅读取。
