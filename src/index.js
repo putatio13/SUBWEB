@@ -467,8 +467,11 @@ async function handleShortLink() {
         }
         if (!response.ok) throw new Error(payload.message || '短链生成失败，请稍后重试。');
         const link = new URL(payload.link);
-        const trustedShortDomain = window.location.origin === 'https://subconv.620895.xyz' &&
-            link.origin === 'https://aot.im';
+        const trustedShortDomain = [
+            'https://subconv.620895.xyz',
+            'https://subconv.aot.im',
+            'https://subweb-3lq.pages.dev'
+        ].includes(window.location.origin) && link.origin === 'https://aot.im';
         if ((!trustedShortDomain && link.origin !== window.location.origin) ||
             !/^\/s\/[A-Za-z0-9_-]{16}$/.test(link.pathname)) {
             throw new Error('短链服务返回了无效链接，请使用完整链接。');
