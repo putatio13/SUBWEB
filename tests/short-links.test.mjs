@@ -51,7 +51,6 @@ test('creates a persistent 16-character short link and resolves GET and HEAD wit
     const body = await response.json();
     assert.match(body.slug, /^[A-Za-z0-9_-]{16}$/);
     assert.equal(body.link, origin + '/s/' + body.slug);
-    assert.equal(body.publicLink, body.link);
     assert.equal(body.expiresAt, null);
     for (const method of ['GET', 'HEAD']) {
         const redirect = await resolve(db, body.slug, method);
@@ -70,18 +69,15 @@ test('publishes production links on aot.im while preview links remain isolated',
     const db = database(t);
     const env = { SHORTLINK_PUBLIC_ORIGIN: 'https://aot.im' };
     const live = await (await create(db, { url: destination }, { env })).json();
-    assert.equal(live.link, origin + '/s/' + live.slug);
-    assert.equal(live.publicLink, 'https://aot.im/s/' + live.slug);
+    assert.equal(live.link, 'https://aot.im/s/' + live.slug);
     assert.equal((await resolve(db, live.slug)).headers.get('location'), destination);
     for (const site of ['https://subconv.aot.im', 'https://subweb-3lq.pages.dev']) {
         const alias = await (await create(db, { url: destination }, { env, origin: site })).json();
-        assert.equal(alias.link, site + '/s/' + alias.slug);
-        assert.equal(alias.publicLink, 'https://aot.im/s/' + alias.slug);
+        assert.equal(alias.link, 'https://aot.im/s/' + alias.slug);
     }
     const previewOrigin = 'https://preview.subweb-3lq.pages.dev';
     const preview = await (await create(db, { url: destination }, { env, origin: previewOrigin })).json();
     assert.equal(preview.link, previewOrigin + '/s/' + preview.slug);
-    assert.equal(preview.publicLink, preview.link);
 });
 
 test('migration preserves prototype records and old short codes', async t => {
