@@ -8,7 +8,7 @@ const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf
 const functions = slice('let subUrl', '// Theme management') +
     slice('function buildSubscriptionUrl', '// Initialize form elements') +
     slice('function handleImportToClash', '// Check backend version');
-const short = 'https://subconv.620895.xyz/s/AbCdEfGhIjKlMnOp';
+const short = 'https://aot.im/s/AbCdEfGhIjKlMnOp';
 
 function setup(fetch) {
     const elements = new Map();
@@ -48,6 +48,16 @@ test('selected short URL is shared by copy, both QR codes and Clash import; orig
     app.run('updateSelectedLink(); handleClashQrCode(); handleImportToClash()');
     assert.equal(app.element('result').value, original);
     assert.equal(app.opened.at(-1), 'clash://install-config?url=' + encodeURIComponent(original));
+});
+
+test('production aliases accept the aot.im link from the same service', async () => {
+    for (const site of ['https://subconv.aot.im', 'https://subweb-3lq.pages.dev']) {
+        const app = setup(async () => Response.json({ link: short }, { status: 201 }));
+        app.run(`window.location.origin = ${JSON.stringify(site)}`);
+        app.run('generateSubUrl(data)');
+        await app.run('handleShortLink()');
+        assert.equal(app.element('result').value, short);
+    }
 });
 
 test('an old response cannot overwrite a regenerated link', async () => {

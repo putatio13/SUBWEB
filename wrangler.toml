@@ -3,6 +3,9 @@ name = "subweb"
 compatibility_date = "2026-09-01"
 pages_build_output_dir = "./dist"
 
+[vars]
+SHORTLINK_PUBLIC_ORIGIN = "https://aot.im"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "subweb-shortlinks"
