@@ -13,7 +13,7 @@ module.exports = {
     entry: "./src/index.js",
     output: {
         path: path.resolve(__dirname, "dist"),
-        filename: "./js/[name].js"
+        filename: "./js/[name].[contenthash:8].js"
     },
     mode: process.env.NODE_ENV,
     // devtool: 'source-map',
@@ -62,7 +62,7 @@ module.exports = {
             template: "./public/index.html"
         }),
         new MiniCssExtractPlugin({
-            filename: "css/[name].css"
+            filename: "css/[name].[contenthash:8].css"
         }),
         new CSSMinimizerPlugin(),
         new NodePolyfillPlugin(),
@@ -83,7 +83,7 @@ module.exports = {
             cacheGroups: {
                 vendors: {
                     test: /node_modules/,
-                    filename: "js/chunk-vendor.[name].js",
+                    filename: "js/chunk-vendor.[name].[contenthash:8].js",
                 }
             }
         },
