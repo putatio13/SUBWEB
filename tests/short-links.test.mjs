@@ -29,11 +29,12 @@ function database(t, before = '') {
     };
 }
 function create(db, body = { url: destination }, options = {}) {
+    const requestOrigin = options.origin || origin;
     return createShortLink({
         env: { DB: db, ...options.env },
-        request: new Request(origin + '/api/create', {
+        request: new Request(requestOrigin + '/api/create', {
             method: options.method || 'POST',
-            headers: { 'Content-Type': 'application/json', Origin: origin, 'CF-Connecting-IP': '192.0.2.1', ...options.headers },
+            headers: { 'Content-Type': 'application/json', Origin: requestOrigin, 'CF-Connecting-IP': '192.0.2.1', ...options.headers },
             ...(!['GET', 'HEAD', 'OPTIONS'].includes(options.method)
                 ? { body: typeof body === 'string' ? body : JSON.stringify(body) } : {})
         })
@@ -62,6 +63,17 @@ test('creates a persistent 16-character short link and resolves GET and HEAD wit
     const row = db.sqlite.prepare('SELECT * FROM links').get();
     assert.equal(row.ip, null);
     assert.equal(row.ua, null);
+});
+
+test('publishes production links on aot.im while preview links remain isolated', async t => {
+    const db = database(t);
+    const env = { SHORTLINK_PUBLIC_ORIGIN: 'https://aot.im' };
+    const live = await (await create(db, { url: destination }, { env })).json();
+    assert.equal(live.link, 'https://aot.im/s/' + live.slug);
+    assert.equal((await resolve(db, live.slug)).headers.get('location'), destination);
+    const previewOrigin = 'https://preview.subweb-3lq.pages.dev';
+    const preview = await (await create(db, { url: destination }, { env, origin: previewOrigin })).json();
+    assert.equal(preview.link, previewOrigin + '/s/' + preview.slug);
 });
 
 test('migration preserves prototype records and old short codes', async t => {

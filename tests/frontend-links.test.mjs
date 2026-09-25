@@ -8,7 +8,7 @@ const slice = (start, end) => source.slice(source.indexOf(start), source.indexOf
 const functions = slice('let subUrl', '// Theme management') +
     slice('function buildSubscriptionUrl', '// Initialize form elements') +
     slice('function handleImportToClash', '// Check backend version');
-const short = 'https://subconv.620895.xyz/s/AbCdEfGhIjKlMnOp';
+const short = 'https://aot.im/s/AbCdEfGhIjKlMnOp';
 
 function setup(fetch) {
     const elements = new Map();
