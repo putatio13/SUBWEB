@@ -195,7 +195,7 @@ npx wrangler pages deploy dist
 
 ### 启用订阅短链
 
-生成完整转换链接后，点击结果区的“生成短链”。正式站点 `subconv.620895.xyz` 生成的短链使用 `https://aot.im/s/…`；预览部署继续使用各自的预览域名和数据库。创建成功后，复制、普通二维码、Clash 导入和 Clash 二维码会一起使用短链。取消“使用短链”即可切回完整链接；修改订阅参数会清除上一次结果。
+生成完整转换链接后，点击结果区的“生成短链”。正式站点 `subconv.620895.xyz`、`subconv.aot.im` 和 `subweb-3lq.pages.dev` 生成的短链使用 `https://aot.im/s/…`；预览部署继续使用各自的预览域名和数据库。创建成功后，复制、普通二维码、Clash 导入和 Clash 二维码会一起使用短链。取消“使用短链”即可切回完整链接；修改订阅参数会清除上一次结果。
 
 短链服务由 Pages Functions 和 D1 提供：
 - `POST /api/create`：JSON 请求 `{ "url": "完整转换链接" }`，返回 `{ "slug": "...", "link": "https://本站/s/...", "expiresAt": null }`。
