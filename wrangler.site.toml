@@ -1,0 +1,7 @@
+# Independent apex origin. The short-link route runs before this Worker.
+name = "aot-site"
+main = "./worker/site.mjs"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "aot.im", custom_domain = true }]

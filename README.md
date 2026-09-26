@@ -197,15 +197,15 @@ npx wrangler pages deploy dist
 
 生成完整转换链接后，点击结果区的“生成短链”。转换网页位于 `subconv.620895.xyz`；该站和生产 Pages 域名 `subweb-3lq.pages.dev` 生成的短链使用 `https://aot.im/s/…`。预览部署继续使用各自的预览域名和数据库。创建成功后，复制、普通二维码、Clash 导入和 Clash 二维码会一起使用短链。取消“使用短链”即可切回完整链接；修改订阅参数会清除上一次结果。
 
-`aot.im` 仅开放 `/s/:id` 短链解析：根路径、静态资源和创建 API 均返回空白 404，不会展示转换网页或重定向到转换网页。旧的 `subconv.aot.im` 也返回空白 404，不向新地址发送重定向。`functions/_middleware.js` 按主机名执行隔离，`public/_routes.json` 必须覆盖所有路径，包括静态资源。
+`aot.im` 不绑定订阅转换 Pages。独立的 `aot-shortlinks` Worker 只接管 `/s/*`；`aot-site` Worker 作为根域站点入口，当前仅提供 `/zoho-domain-verification.html`（内容为 `30563962`），根路径和其他路径返回空白 404。将来可在站点入口增加个人主页，短链路由不受影响。旧的 `subconv.aot.im` 保持不解析。Pages 的 `functions/_middleware.js` 仍作为误绑域名时的保护，`public/_routes.json` 必须覆盖所有路径，包括静态资源。
 
-短链服务由 Pages Functions 和 D1 提供：
+创建接口由 Pages Functions 提供；独立 Worker 使用同一个生产 D1 数据库解析 `aot.im/s/:id`：
 - `POST /api/create`：JSON 请求 `{ "url": "完整转换链接" }`，返回 `slug`、`link` 和 `expiresAt`。正式站点的 `link` 为 `https://aot.im/s/…`；预览站点的 `link` 保持预览域名。
 - `GET /s/:id`、`HEAD /s/:id`：返回 302 跳转。原型的 `/api/:id` 路由继续兼容。
 - 链接默认长期有效；API 可选传入整数 `expiresInDays`（1–365）。不存在返回 404，过期或停用返回 410。
 - 创建接口每个来源 IP 每分钟最多 10 次、每小时最多 100 次；限流不影响订阅读取。
 - 默认仅允许 `https://conv.620895.xyz` 的转换链接。要启用其他可信后端，在 Wrangler 的 `[vars]` 和对应预览环境中设置 `SHORTLINK_ALLOWED_ORIGINS`，使用逗号分隔完整 origin。自定义后端仍可生成和使用普通长链接。
-- `SHORTLINK_PUBLIC_ORIGIN` 设置正式短链域名；当前为 `https://aot.im`。先将该域名接入相同的 Cloudflare Pages 项目，确保 `/s/:id` 能使用生产 D1 数据库，再启用此设置。
+- `SHORTLINK_PUBLIC_ORIGIN` 设置正式短链域名；当前为 `https://aot.im`。`aot-shortlinks` Worker 的 `/s/*` 路由必须绑定相同的生产 D1 数据库，才能解析已有和新建的短链。
 - 短码使用 96 位密码学随机数，SQL 使用参数绑定。服务不保存原始 IP、UA 或逐次访问日志。
 - 短链会在数据库中保存完整订阅地址，302 跳转可还原该地址。持有短链即可读取订阅，请按订阅凭据保管。
 
@@ -243,7 +243,15 @@ npx wrangler pages dev dist
 
 本地数据保存在 `.wrangler/`，不影响线上数据库。生产部署可推送到已连接的 Git 仓库，或运行 `npx wrangler pages deploy dist`。
 
-`public/_routes.json` 会复制到构建目录，让所有路径先经过主机名隔离中间件；否则 `aot.im` 可绕过隔离读取静态页面。请不要给 `/s/*` 添加交互式验证码，否则订阅客户端无法自动更新。
+`public/_routes.json` 会复制到构建目录，让所有路径先经过主机名隔离中间件，防止误将 `aot.im` 绑定到 Pages 时泄露静态页面。请不要给 `/s/*` 添加交互式验证码，否则订阅客户端无法自动更新。
+
+#### 独立短链 Worker
+
+`worker/shortlinks.mjs` 是可单独部署的解析器；`wrangler.shortlinks.toml` 绑定现有生产 D1 和 `aot.im/s/*` 路由。`worker/site.mjs` 是独立的根域站点入口；`wrangler.site.toml` 将 `aot.im` 设为其 Custom Domain。两者可分别使用 `npx wrangler deploy --config wrangler.shortlinks.toml` 和 `npx wrangler deploy --config wrangler.site.toml` 部署。Cloudflare 会为站点 Worker 的 Custom Domain 创建新的 DNS 记录；短链 Worker 路由优先于站点 Worker。
+
+切换时先从订阅转换 Pages 的 Custom Domains 移除 `aot.im`，并删除原来指向 Pages 的根域 CNAME；随后为 `aot-site` 添加 `aot.im` Custom Domain，再为 `aot-shortlinks` 添加 `aot.im/s/*` 路由。不要删除 `subconv.620895.xyz` 的 Pages 绑定。
+
+短链 Worker 只读取短链，不接收创建请求，也不提供网页。数据库中不存在的短码返回 404，停用或过期返回 410。`workers_dev` 与预览 URL 均已关闭。生产部署后可检查根路径是 404、Zoho 验证文件是 `30563962`、已知有效短链是 302，转换网页仍在 `subconv.620895.xyz` 正常打开。
 
 ## EdgeOne Pages 部署
 
