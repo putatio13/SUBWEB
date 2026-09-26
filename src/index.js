@@ -469,7 +469,6 @@ async function handleShortLink() {
         const link = new URL(payload.link);
         const trustedShortDomain = [
             'https://subconv.620895.xyz',
-            'https://subconv.aot.im',
             'https://subweb-3lq.pages.dev'
         ].includes(window.location.origin) && link.origin === 'https://aot.im';
         if ((!trustedShortDomain && link.origin !== window.location.origin) ||
