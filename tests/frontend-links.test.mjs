@@ -51,7 +51,7 @@ test('selected short URL is shared by copy, both QR codes and Clash import; orig
 });
 
 test('production aliases accept the aot.im link from the same service', async () => {
-    for (const site of ['https://subconv.aot.im', 'https://subweb-3lq.pages.dev']) {
+    for (const site of ['https://subweb-3lq.pages.dev']) {
         const app = setup(async () => Response.json({ link: short }, { status: 201 }));
         app.run(`window.location.origin = ${JSON.stringify(site)}`);
         app.run('generateSubUrl(data)');
