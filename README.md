@@ -195,7 +195,9 @@ npx wrangler pages deploy dist
 
 ### 启用订阅短链
 
-生成完整转换链接后，点击结果区的“生成短链”。正式站点 `subconv.620895.xyz`、`subconv.aot.im` 和 `subweb-3lq.pages.dev` 生成的短链使用 `https://aot.im/s/…`；预览部署继续使用各自的预览域名和数据库。创建成功后，复制、普通二维码、Clash 导入和 Clash 二维码会一起使用短链。取消“使用短链”即可切回完整链接；修改订阅参数会清除上一次结果。
+生成完整转换链接后，点击结果区的“生成短链”。转换网页位于 `subconv.620895.xyz`；该站和生产 Pages 域名 `subweb-3lq.pages.dev` 生成的短链使用 `https://aot.im/s/…`。预览部署继续使用各自的预览域名和数据库。创建成功后，复制、普通二维码、Clash 导入和 Clash 二维码会一起使用短链。取消“使用短链”即可切回完整链接；修改订阅参数会清除上一次结果。
+
+`aot.im` 仅开放 `/s/:id` 短链解析：根路径、静态资源和创建 API 均返回空白 404，不会展示转换网页或重定向到转换网页。旧的 `subconv.aot.im` 也返回空白 404，不向新地址发送重定向。`functions/_middleware.js` 按主机名执行隔离，`public/_routes.json` 必须覆盖所有路径，包括静态资源。
 
 短链服务由 Pages Functions 和 D1 提供：
 - `POST /api/create`：JSON 请求 `{ "url": "完整转换链接" }`，返回 `slug`、`link` 和 `expiresAt`。正式站点的 `link` 为 `https://aot.im/s/…`；预览站点的 `link` 保持预览域名。
@@ -241,7 +243,7 @@ npx wrangler pages dev dist
 
 本地数据保存在 `.wrangler/`，不影响线上数据库。生产部署可推送到已连接的 Git 仓库，或运行 `npx wrangler pages deploy dist`。
 
-`public/_routes.json` 会复制到构建目录，仅让 `/api/*` 和 `/s/*` 调用 Functions。请不要给 `/s/*` 添加交互式验证码，否则订阅客户端无法自动更新。
+`public/_routes.json` 会复制到构建目录，让所有路径先经过主机名隔离中间件；否则 `aot.im` 可绕过隔离读取静态页面。请不要给 `/s/*` 添加交互式验证码，否则订阅客户端无法自动更新。
 
 ## EdgeOne Pages 部署
 
