@@ -12,6 +12,13 @@ function empty(status, headers = {}) {
     });
 }
 
+function appendRequestQuery(destination, requestUrl) {
+    for (const [name, value] of requestUrl.searchParams) {
+        destination.searchParams.append(name, value);
+    }
+    return destination;
+}
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
@@ -34,7 +41,7 @@ export default {
                 return empty(410);
             }
 
-            const destination = new URL(link.url);
+            const destination = appendRequestQuery(new URL(link.url), url);
             if (!['https:', 'http:'].includes(destination.protocol) ||
                 destination.username || destination.password) {
                 return empty(410);
