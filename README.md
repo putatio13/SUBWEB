@@ -27,6 +27,7 @@
 - 支持自定义远程配置 URL。
 - 支持常用筛选参数：
   `include`、`exclude`、`filename`、`emoji`、`append_type`、`append_info`、`scv`、`udp`、`list`、`sort`、`fdn`、`insert`。
+- 支持添加任意自定义查询参数；这些参数会写入完整转换链接，并随长链保存到短链数据库中。
 - 自动探测预置后端可用性和响应时间，并优先选择可用后端。
 - 支持手动填写自定义后端地址，并自动补全常见 `/sub?` 形式。
 - 生成结果后可直接复制。
@@ -197,7 +198,7 @@ npx wrangler pages deploy dist
 
 生成完整转换链接后，点击结果区的“生成短链”。转换网页位于 `subconv.620895.xyz`；该站和生产 Pages 域名 `subweb-3lq.pages.dev` 生成的短链使用 `https://aot.im/s/…`。预览部署继续使用各自的预览域名和数据库。创建成功后，复制、普通二维码、Clash 导入和 Clash 二维码会一起使用短链。取消“使用短链”即可切回完整链接；修改订阅参数会清除上一次结果。
 
-`aot.im` 不绑定订阅转换 Pages。独立的 `aot-shortlinks` Worker 只接管 `/s/*`；`aot-site` Worker 作为根域站点入口，当前仅提供 `/zoho-domain-verification.html`（内容为 `30563962`），根路径和其他路径返回空白 404。将来可在站点入口增加个人主页，短链路由不受影响。旧的 `subconv.aot.im` 保持不解析。Pages 的 `functions/_middleware.js` 仍作为误绑域名时的保护，`public/_routes.json` 必须覆盖所有路径，包括静态资源。
+`aot.im` 不绑定订阅转换 Pages。独立的 `aot-shortlinks` Worker 只接管 `/s/*`；`aot-site` Worker 作为根域站点入口，当前所有路径均返回空白 404。将来可在站点入口增加个人主页，短链路由不受影响。旧的 `subconv.aot.im` 保持不解析。Pages 的 `functions/_middleware.js` 仍作为误绑域名时的保护，`public/_routes.json` 必须覆盖所有路径，包括静态资源。
 
 创建接口由 Pages Functions 提供；独立 Worker 使用同一个生产 D1 数据库解析 `aot.im/s/:id`：
 - `POST /api/create`：JSON 请求 `{ "url": "完整转换链接" }`，返回 `slug`、`link` 和 `expiresAt`。正式站点的 `link` 为 `https://aot.im/s/…`；预览站点的 `link` 保持预览域名。
@@ -251,7 +252,7 @@ npx wrangler pages dev dist
 
 切换时先从订阅转换 Pages 的 Custom Domains 移除 `aot.im`，并删除原来指向 Pages 的根域 CNAME；随后为 `aot-site` 添加 `aot.im` Custom Domain，再为 `aot-shortlinks` 添加 `aot.im/s/*` 路由。不要删除 `subconv.620895.xyz` 的 Pages 绑定。
 
-短链 Worker 只读取短链，不接收创建请求，也不提供网页。数据库中不存在的短码返回 404，停用或过期返回 410。`workers_dev` 与预览 URL 均已关闭。生产部署后可检查根路径是 404、Zoho 验证文件是 `30563962`、已知有效短链是 302，转换网页仍在 `subconv.620895.xyz` 正常打开。
+短链 Worker 只读取短链，不接收创建请求，也不提供网页。数据库中不存在的短码返回 404，停用或过期返回 410。`workers_dev` 与预览 URL 均已关闭。生产部署后可检查根路径和旧 Zoho 验证路径均为 404、已知有效短链是 302，转换网页仍在 `subconv.620895.xyz` 正常打开。
 
 ## EdgeOne Pages 部署
 
