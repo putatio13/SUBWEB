@@ -66,6 +66,9 @@ export const externalConfig = [{
     }, {
         label: '全量版',
         value: 'profiles/pc.ini'
+    }, {
+        label: 'DNS去广告',
+        value: 'profiles/adguard.ini'
     }]
 }, {
     label: 'CM规则',
