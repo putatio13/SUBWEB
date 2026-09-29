@@ -370,7 +370,65 @@ function buildSubscriptionUrl(data) {
     }
 
     newSubUrl += `&emoji=${data.emoji || 'false'}&append_type=${data.append_type || 'false'}&append_info=${data.append_info || 'false'}&scv=${data.scv || 'false'}&udp=${data.udp || 'false'}&list=${data.list || 'false'}&sort=${data.sort || 'false'}&fdn=${data.fdn || 'false'}&insert=${data.insert || 'false'}`;
+
+    for (const param of data.customParams || []) {
+        const name = typeof param?.name === 'string' ? param.name.trim() : '';
+        if (!name) continue;
+        newSubUrl += `&${encodeURIComponent(name)}=${encodeURIComponent(param.value ?? '')}`;
+    }
+
     return newSubUrl;
+}
+
+function updateCustomParamsEmptyState() {
+    const container = document.getElementById('customParamsContainer');
+    const empty = document.getElementById('customParamsEmpty');
+    if (empty) empty.classList.toggle('hidden', Boolean(container?.children.length));
+}
+
+function addCustomParamRow() {
+    const container = document.getElementById('customParamsContainer');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.dataset.customParamRow = '1';
+    row.className = 'grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center';
+    row.innerHTML = `
+        <input type="text" data-custom-param-name aria-label="自定义参数名" placeholder="参数名，例如 tfo"
+            class="input-field hover:bg-gray-100 focus:bg-white text-sm col-span-2 sm:col-span-1">
+        <input type="text" data-custom-param-value aria-label="自定义参数值" placeholder="参数值，例如 true"
+            class="input-field hover:bg-gray-100 focus:bg-white text-sm">
+        <button type="button" data-remove-custom-param aria-label="删除自定义参数"
+            class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/60 dark:hover:bg-red-800 text-red-600 dark:text-red-300 transition-colors">
+            <i class="fas fa-trash-alt"></i>
+        </button>`;
+
+    row.querySelector('[data-remove-custom-param]')?.addEventListener('click', () => {
+        row.remove();
+        updateCustomParamsEmptyState();
+        invalidateGeneratedLink();
+    });
+    container.appendChild(row);
+    updateCustomParamsEmptyState();
+    row.querySelector('[data-custom-param-name]')?.focus();
+}
+
+function readCustomParams() {
+    const params = [];
+    const rows = document.querySelectorAll('[data-custom-param-row="1"]');
+    for (const row of rows) {
+        const name = row.querySelector('[data-custom-param-name]')?.value.trim() || '';
+        const valueInput = row.querySelector('[data-custom-param-value]');
+        const value = valueInput?.value ?? '';
+        if (!name && !value) continue;
+        if (!name) {
+            showToast('请填写自定义参数名', 'error');
+            valueInput?.focus();
+            return;
+        }
+        params.push({ name, value });
+    }
+    return params;
 }
 
 function resetShortLink() {
@@ -636,6 +694,9 @@ function readSubscriptionForm(form) {
         // Use regular config select
         config = formData.get('config');
     }
+
+    const customParams = readCustomParams();
+    if (!customParams) return;
     
     return {
         url: formData.get('url'),
@@ -653,7 +714,8 @@ function readSubscriptionForm(form) {
         list: formData.get('list') === 'on' ? 'true' : 'false',
         sort: formData.get('sort') === 'on' ? 'true' : 'false',
         fdn: formData.get('fdn') === 'on' ? 'true' : 'false',
-        insert: formData.get('insert') === 'on' ? 'true' : 'false'
+        insert: formData.get('insert') === 'on' ? 'true' : 'false',
+        customParams
     };
     
 
@@ -1125,6 +1187,9 @@ $(document).ready(() => {
         form.addEventListener('input', invalidateGeneratedLink);
         form.addEventListener('change', invalidateGeneratedLink);
     }
+
+    document.getElementById('addCustomParam')?.addEventListener('click', addCustomParamRow);
+    updateCustomParamsEmptyState();
     
     document.getElementById('shortLinkBtn')?.addEventListener('click', handleShortLink);
     document.getElementById('useShortLink')?.addEventListener('change', updateSelectedLink);
