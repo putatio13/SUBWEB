@@ -60,6 +60,27 @@ test('production aliases accept the aot.im link from the same service', async ()
     }
 });
 
+test('custom parameters become part of the stored long URL', async () => {
+    let storedUrl;
+    const app = setup(async (_url, options) => {
+        storedUrl = JSON.parse(options.body).url;
+        return Response.json({ link: short }, { status: 201 });
+    });
+    app.data.customParams = [
+        { name: 'tfo', value: 'true' },
+        { name: 'tag', value: '测试 & value' },
+        { name: 'tag', value: 'second' }
+    ];
+    app.run('generateSubUrl(data)');
+    const generated = new URL(app.element('result').value);
+    assert.equal(generated.searchParams.get('tfo'), 'true');
+    assert.deepEqual(generated.searchParams.getAll('tag'), ['测试 & value', 'second']);
+    await app.run('handleShortLink()');
+    assert.equal(storedUrl, generated.href);
+    assert.equal(app.element('result').value, short);
+    assert.equal(new URL(short).search, '');
+});
+
 test('an old response cannot overwrite a regenerated link', async () => {
     let finish;
     const app = setup(() => new Promise(resolve => { finish = resolve; }));
