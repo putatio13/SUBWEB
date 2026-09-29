@@ -201,7 +201,7 @@ npx wrangler pages deploy dist
 
 创建接口由 Pages Functions 提供；独立 Worker 使用同一个生产 D1 数据库解析 `aot.im/s/:id`：
 - `POST /api/create`：JSON 请求 `{ "url": "完整转换链接" }`，返回 `slug`、`link` 和 `expiresAt`。正式站点的 `link` 为 `https://aot.im/s/…`；预览站点的 `link` 保持预览域名。
-- `GET /s/:id`、`HEAD /s/:id`：返回 302 跳转。原型的 `/api/:id` 路由继续兼容。
+- `GET /s/:id`、`HEAD /s/:id`：返回 302 跳转。短链请求中的 GET 参数会按原顺序追加到已保存的长链参数后，同名参数保留为多个值。原型的 `/api/:id` 路由继续兼容。
 - 链接默认长期有效；API 可选传入整数 `expiresInDays`（1–365）。不存在返回 404，过期或停用返回 410。
 - 创建接口每个来源 IP 每分钟最多 10 次、每小时最多 100 次；限流不影响订阅读取。
 - 默认仅允许 `https://conv.620895.xyz` 的转换链接。要启用其他可信后端，在 Wrangler 的 `[vars]` 和对应预览环境中设置 `SHORTLINK_ALLOWED_ORIGINS`，使用逗号分隔完整 origin。自定义后端仍可生成和使用普通长链接。
