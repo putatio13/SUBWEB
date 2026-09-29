@@ -395,9 +395,9 @@ function addCustomParamRow() {
     row.className = 'grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 items-center';
     row.innerHTML = `
         <input type="text" data-custom-param-name aria-label="自定义参数名" placeholder="参数名，例如 tfo"
-            class="input-field hover:bg-gray-100 focus:bg-white text-sm col-span-2 sm:col-span-1">
+            class="input-field text-sm col-span-2 sm:col-span-1">
         <input type="text" data-custom-param-value aria-label="自定义参数值" placeholder="参数值，例如 true"
-            class="input-field hover:bg-gray-100 focus:bg-white text-sm">
+            class="input-field text-sm">
         <button type="button" data-remove-custom-param aria-label="删除自定义参数"
             class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-900/60 dark:hover:bg-red-800 text-red-600 dark:text-red-300 transition-colors">
             <i class="fas fa-trash-alt"></i>
