@@ -281,6 +281,23 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Custom Query Parameters -->
+                        <div class="pt-5 mt-5 border-t border-gray-200 dark:border-gray-700">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                                <div>
+                                    <h4 class="text-base sm:text-lg font-semibold text-gray-700 dark:text-gray-200">自定义参数</h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">参数会写入完整转换链接，并随长链保存到短链服务。</p>
+                                </div>
+                                <button type="button" id="addCustomParam"
+                                    class="inline-flex items-center justify-center px-3 py-2 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/70 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 rounded-lg transition-colors text-sm font-medium">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    添加参数
+                                </button>
+                            </div>
+                            <div id="customParamsContainer" class="space-y-2"></div>
+                            <p id="customParamsEmpty" class="text-xs text-gray-400 dark:text-gray-500 py-2">尚未添加自定义参数</p>
+                        </div>
                     </div>
                 </div>
             </div>
