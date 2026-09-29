@@ -46,6 +46,20 @@ test('existing D1 short links redirect without returning the UI', async () => {
     }
 });
 
+test('request query parameters are appended to the stored destination', async () => {
+    const destination = 'https://conv.620895.xyz/sub?url=stored&target=clash&tag=base';
+    const response = await worker.fetch(new Request(
+        'https://aot.im/s/known-slug?udp=true&tag=extra&tag=second&name=%E6%B5%8B%E8%AF%95'
+    ), envFor({ url: destination, status: 1, expires_at: null }));
+    const redirected = new URL(response.headers.get('location'));
+    assert.equal(response.status, 302);
+    assert.equal(redirected.searchParams.get('url'), 'stored');
+    assert.equal(redirected.searchParams.get('target'), 'clash');
+    assert.equal(redirected.searchParams.get('udp'), 'true');
+    assert.deepEqual(redirected.searchParams.getAll('tag'), ['base', 'extra', 'second']);
+    assert.equal(redirected.searchParams.get('name'), '测试');
+});
+
 test('unknown, expired, and broken links fail without exposing their contents', async () => {
     for (const [link, status] of [
         [null, 404],

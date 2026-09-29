@@ -40,8 +40,8 @@ function create(db, body = { url: destination }, options = {}) {
         })
     });
 }
-function resolve(db, slug, method = 'GET') {
-    return resolveShortLink({ env: { DB: db }, params: { id: slug }, request: new Request(origin + '/s/' + slug, { method }) });
+function resolve(db, slug, method = 'GET', query = '') {
+    return resolveShortLink({ env: { DB: db }, params: { id: slug }, request: new Request(origin + '/s/' + slug + query, { method }) });
 }
 
 test('creates a persistent 16-character short link and resolves GET and HEAD without caching', async t => {
@@ -78,6 +78,16 @@ test('publishes production links on aot.im while preview links remain isolated',
     const previewOrigin = 'https://preview.subweb-3lq.pages.dev';
     const preview = await (await create(db, { url: destination }, { env, origin: previewOrigin })).json();
     assert.equal(preview.link, previewOrigin + '/s/' + preview.slug);
+});
+
+test('resolver forwards incoming GET parameters without replacing stored values', async t => {
+    const db = database(t);
+    const body = await (await create(db)).json();
+    const response = await resolve(db, body.slug, 'GET', '?udp=true&target=singbox&target=stash');
+    const redirected = new URL(response.headers.get('location'));
+    assert.equal(response.status, 302);
+    assert.deepEqual(redirected.searchParams.getAll('target'), ['clash', 'singbox', 'stash']);
+    assert.equal(redirected.searchParams.get('udp'), 'true');
 });
 
 test('migration preserves prototype records and old short codes', async t => {
